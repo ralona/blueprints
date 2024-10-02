@@ -1,0 +1,62 @@
+blueprint:
+  name: Controlar brillo solo si la luz está encendida
+  description: >
+    Este blueprint permite ajustar el brillo de múltiples dispositivos,
+    asegurándose de que solo se modifiquen aquellos que están encendidos.
+  
+  domain: automation
+  author: Tu Nombre
+  input:
+    linked_entities:
+      name: Entidades a enlazar
+      description: Entidades que se sincronizarán
+      selector:
+        entity:
+          multiple: true
+
+mode: single
+max_exceeded: silent
+
+variables:
+  linked_entities: !input linked_entities
+
+trigger:
+  - platform: state
+    entity_id: !input linked_entities
+    id: linked_entities_trigger  
+
+condition:
+  - condition: template 
+    value_template: "{{ trigger.to_state.state in ['on', 'off'] }}"  
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.to_state.state != trigger.from_state.state }}"
+      - condition: template
+        value_template: "{{ trigger.to_state.attributes.brightness | int != trigger.from_state.attributes.brightness | int }}"
+
+action:
+  - if:
+      - condition: template
+        value_template: '{{ trigger.to_state.state == "on" }}'
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ trigger.to_state.attributes.brightness is defined }}"
+        then:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: >
+                {{ linked_entities | reject('eq', trigger.entity_id) | list }}
+            data:
+              brightness: "{{ trigger.to_state.attributes.brightness }}" 
+        else:
+          - service: homeassistant.turn_on
+            target:
+              entity_id: >
+                {{ linked_entities | reject('eq', trigger.entity_id) | list }}
+    else:
+      - service: homeassistant.turn_off
+        target:
+          entity_id: >
+            {{ linked_entities | reject('eq', trigger.entity_id) | list }}
