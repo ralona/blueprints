@@ -1,0 +1,407 @@
+blueprint:
+  name: Luz Adaptativa Inteligente Pro (Script)
+  description: |-
+    Script avanzado que enciende luces con brillo y temperatura adaptados a la hora del día.
+    
+    Características:
+    • Control adaptativo basado en 4 períodos del día
+    • Modo "Visitas" para encendido simple sin ajustes
+    • Transiciones suaves configurables
+    • Validación de capacidades del dispositivo
+    • Soporte para luces RGB y temperatura de color
+    • Registro de eventos para depuración
+    
+  domain: script
+  homeassistant:
+    min_version: 2024.1.0
+
+  # ===================================================================
+  # ENTRADAS (INPUTS)
+  # ===================================================================
+  input:
+    # --- Configuración Principal ---
+    target_light:
+      name: Luz a controlar
+      description: Selecciona la luz que será controlada por este script
+      selector:
+        entity:
+          domain: light
+          multiple: false
+
+    modo_visitas_helper:
+      name: Ayudante "Modo Visitas"
+      description: |-
+        Input boolean para activar el modo visitas.
+        En este modo, la luz solo se enciende sin ajustes de color/brillo.
+      selector:
+        entity:
+          domain: input_boolean
+      default: input_boolean.modo_visitas
+
+    # --- Configuración de Transición ---
+    transition_time:
+      name: Tiempo de transición
+      description: |-
+        Duración del fade-in al encender (segundos).
+        0 = cambio instantáneo
+      selector:
+        number:
+          min: 0
+          max: 30
+          unit_of_measurement: "s"
+          step: 0.5
+          mode: slider
+      default: 3
+
+    # --- MAÑANA (6:00 - 8:59) ---
+    morning_brightness:
+      name: Mañana - Brillo
+      description: Energía moderada para despertar
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 75
+
+    morning_temp:
+      name: Mañana - Temperatura de color
+      description: Luz fría-neutra para activación
+      selector:
+        color_temp:
+          min_kelvin: 2000
+          max_kelvin: 6500
+      default: 4500
+
+    morning_rgb:
+      name: Mañana - Color RGB (opcional)
+      description: Solo si tu luz no soporta temperatura de color
+      selector:
+        color_rgb:
+      default: [255, 228, 181]  # Warm white equivalent
+
+    # --- DÍA (9:00 - 17:59) ---
+    day_brightness:
+      name: Día - Brillo
+      description: Máxima iluminación para productividad
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 100
+
+    day_temp:
+      name: Día - Temperatura de color
+      description: Luz blanca/fría para concentración
+      selector:
+        color_temp:
+          min_kelvin: 2000
+          max_kelvin: 6500
+      default: 5500
+
+    day_rgb:
+      name: Día - Color RGB (opcional)
+      description: Solo si tu luz no soporta temperatura de color
+      selector:
+        color_rgb:
+      default: [255, 244, 229]  # Daylight white
+
+    # --- TARDE (18:00 - 21:59) ---
+    evening_brightness:
+      name: Tarde - Brillo
+      description: Iluminación relajada
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 60
+
+    evening_temp:
+      name: Tarde - Temperatura de color
+      description: Luz cálida para relajación
+      selector:
+        color_temp:
+          min_kelvin: 2000
+          max_kelvin: 6500
+      default: 3000
+
+    evening_rgb:
+      name: Tarde - Color RGB (opcional)
+      description: Solo si tu luz no soporta temperatura de color
+      selector:
+        color_rgb:
+      default: [255, 197, 143]  # Warm white
+
+    # --- NOCHE (22:00 - 5:59) ---
+    night_brightness:
+      name: Noche - Brillo
+      description: Mínima iluminación para no perturbar el sueño
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 20
+
+    night_temp:
+      name: Noche - Temperatura de color
+      description: Luz muy cálida para preparar el descanso
+      selector:
+        color_temp:
+          min_kelvin: 2000
+          max_kelvin: 6500
+      default: 2200
+
+    night_rgb:
+      name: Noche - Color RGB (opcional)
+      description: Solo si tu luz no soporta temperatura de color
+      selector:
+        color_rgb:
+      default: [255, 147, 41]  # Very warm white
+
+    # --- Opciones Avanzadas ---
+    enable_logging:
+      name: Habilitar registro de eventos
+      description: Registra las acciones en el log de Home Assistant
+      selector:
+        boolean:
+      default: false
+
+    adaptive_brightness:
+      name: Ajuste adaptativo de brillo
+      description: |-
+        Ajusta el brillo basándose en el brillo actual de la luz.
+        Útil para transiciones más suaves.
+      selector:
+        boolean:
+      default: false
+
+    respect_manual_control:
+      name: Respetar control manual
+      description: |-
+        Si la luz fue ajustada manualmente en los últimos 30 minutos,
+        no aplica cambios automáticos.
+      selector:
+        boolean:
+      default: true
+
+# ===================================================================
+# VARIABLES LOCALES
+# ===================================================================
+variables:
+  light: !input target_light
+  visitas: !input modo_visitas_helper
+  transition: !input transition_time
+  log_enabled: !input enable_logging
+  adaptive: !input adaptive_brightness
+  manual_control: !input respect_manual_control
+  
+  # Determinar período del día
+  current_hour: "{{ now().hour }}"
+  time_period: >-
+    {% set h = now().hour %}
+    {% if 6 <= h < 9 %}
+      morning
+    {% elif 9 <= h < 18 %}
+      day
+    {% elif 18 <= h < 22 %}
+      evening
+    {% else %}
+      night
+    {% endif %}
+  
+  # Obtener capacidades de la luz
+  supports_color_temp: "{{ state_attr(light, 'supported_color_modes') and 'color_temp' in state_attr(light, 'supported_color_modes') }}"
+  supports_rgb: "{{ state_attr(light, 'supported_color_modes') and 'rgb' in state_attr(light, 'supported_color_modes') }}"
+  supports_brightness: "{{ state_attr(light, 'supported_color_modes') and 'brightness' in state_attr(light, 'supported_color_modes') }}"
+  
+  # Verificar control manual reciente
+  last_changed: "{{ (as_timestamp(now()) - as_timestamp(states[light].last_changed)) / 60 }}"
+  manual_override: "{{ manual_control and last_changed < 30 and states(light) == 'on' }}"
+
+# ===================================================================
+# SECUENCIA DEL SCRIPT
+# ===================================================================
+sequence:
+  # --- Registro inicial ---
+  - if:
+      - condition: template
+        value_template: "{{ log_enabled }}"
+    then:
+      - service: system_log.write
+        data:
+          message: "Luz Adaptativa: Iniciando para {{ light }} en período {{ time_period }}"
+          level: info
+
+  # --- Verificar control manual ---
+  - if:
+      - condition: template
+        value_template: "{{ manual_override }}"
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ log_enabled }}"
+        then:
+          - service: system_log.write
+            data:
+              message: "Luz Adaptativa: Control manual detectado, saliendo sin cambios"
+              level: info
+      - stop: "Control manual activo"
+
+  # --- MODO VISITAS ---
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input modo_visitas_helper
+            state: "on"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ log_enabled }}"
+            then:
+              - service: system_log.write
+                data:
+                  message: "Luz Adaptativa: Modo visitas activo - encendido simple"
+                  level: info
+          
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              transition: !input transition_time
+
+    # --- MODO ADAPTATIVO ---
+    default:
+      - choose:
+          # MAÑANA (6:00 - 8:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'morning' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: >-
+                    {% if adaptive and states(light) == 'on' %}
+                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, morning_brightness | int] | average | round }}
+                    {% else %}
+                      {{ morning_brightness }}
+                    {% endif %}
+                  color_temp_kelvin: >-
+                    {% if supports_color_temp %}
+                      {{ morning_temp }}
+                    {% else %}
+                      
+                    {% endif %}
+                  rgb_color: >-
+                    {% if not supports_color_temp and supports_rgb %}
+                      {{ morning_rgb }}
+                    {% else %}
+                      
+                    {% endif %}
+                  transition: !input transition_time
+
+          # DÍA (9:00 - 17:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'day' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: >-
+                    {% if adaptive and states(light) == 'on' %}
+                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, day_brightness | int] | average | round }}
+                    {% else %}
+                      {{ day_brightness }}
+                    {% endif %}
+                  color_temp_kelvin: >-
+                    {% if supports_color_temp %}
+                      {{ day_temp }}
+                    {% else %}
+                      
+                    {% endif %}
+                  rgb_color: >-
+                    {% if not supports_color_temp and supports_rgb %}
+                      {{ day_rgb }}
+                    {% else %}
+                      
+                    {% endif %}
+                  transition: !input transition_time
+
+          # TARDE (18:00 - 21:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'evening' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: >-
+                    {% if adaptive and states(light) == 'on' %}
+                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, evening_brightness | int] | average | round }}
+                    {% else %}
+                      {{ evening_brightness }}
+                    {% endif %}
+                  color_temp_kelvin: >-
+                    {% if supports_color_temp %}
+                      {{ evening_temp }}
+                    {% else %}
+                      
+                    {% endif %}
+                  rgb_color: >-
+                    {% if not supports_color_temp and supports_rgb %}
+                      {{ evening_rgb }}
+                    {% else %}
+                      
+                    {% endif %}
+                  transition: !input transition_time
+
+          # NOCHE (22:00 - 5:59) - Por defecto
+          default:
+            - service: light.turn_on
+              target:
+                entity_id: !input target_light
+              data:
+                brightness_pct: >-
+                  {% if adaptive and states(light) == 'on' %}
+                    {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, night_brightness | int] | average | round }}
+                  {% else %}
+                    {{ night_brightness }}
+                  {% endif %}
+                color_temp_kelvin: >-
+                  {% if supports_color_temp %}
+                    {{ night_temp }}
+                  {% else %}
+                    
+                  {% endif %}
+                rgb_color: >-
+                  {% if not supports_color_temp and supports_rgb %}
+                    {{ night_rgb }}
+                  {% else %}
+                    
+                  {% endif %}
+                transition: !input transition_time
+
+  # --- Registro final ---
+  - if:
+      - condition: template
+        value_template: "{{ log_enabled }}"
+    then:
+      - service: system_log.write
+        data:
+          message: "Luz Adaptativa: Completado para {{ light }} con configuración de {{ time_period }}"
+          level: info
+
+# --- MODO DE EJECUCIÓN ---
+mode: parallel
+max: 10
