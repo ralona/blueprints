@@ -1,0 +1,67 @@
+# Helpers necesarios para el modo preview avanzado
+# Añade estos helpers en tu configuration.yaml o mediante la UI
+
+input_number:
+  preview_hour_slider:
+    name: Hora de Preview
+    icon: mdi:clock-outline
+    min: 0
+    max: 23
+    step: 1
+    unit_of_measurement: "h"
+
+input_boolean:
+  preview_notifications:
+    name: Notificaciones de Preview
+    icon: mdi:message-badge
+    initial: on
+
+# Script adicional para test rápido de todas las horas
+script:
+  test_all_periods:
+    alias: "Test Todos los Períodos"
+    icon: mdi:test-tube
+    sequence:
+      # Test Mañana
+      - service: script.tu_script_adaptativo
+        data:
+          enable_preview_mode: true
+          preview_hour: 7
+          show_notifications: true
+      - delay: "00:00:03"
+      
+      # Test Día
+      - service: script.tu_script_adaptativo
+        data:
+          enable_preview_mode: true
+          preview_hour: 12
+          show_notifications: true
+      - delay: "00:00:03"
+      
+      # Test Tarde
+      - service: script.tu_script_adaptativo
+        data:
+          enable_preview_mode: true
+          preview_hour: 19
+          show_notifications: true
+      - delay: "00:00:03"
+      
+      # Test Noche
+      - service: script.tu_script_adaptativo
+        data:
+          enable_preview_mode: true
+          preview_hour: 23
+          show_notifications: true
+      - delay: "00:00:03"
+      
+      # Volver a modo normal
+      - service: script.tu_script_adaptativo
+        data:
+          enable_preview_mode: false
+          show_notifications: false
+      
+      - service: persistent_notification.create
+        data:
+          title: "✅ Test Completado"
+          message: "Se han probado todos los períodos del día"
+          notification_id: test_complete

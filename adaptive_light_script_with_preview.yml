@@ -1,0 +1,363 @@
+blueprint:
+  name: Luz Adaptativa Inteligente Pro con Preview (Script)
+  description: |-
+    Script avanzado que enciende luces con brillo y temperatura adaptados a la hora del día.
+    Incluye modo de vista previa para simular diferentes horas.
+    
+    Características:
+    • Control adaptativo basado en 4 períodos del día
+    • Modo "Visitas" para encendido simple sin ajustes
+    • MODO PREVIEW: Simula el comportamiento a cualquier hora
+    • Transiciones suaves configurables
+    • Notificaciones opcionales de estado
+    
+  domain: script
+
+  input:
+    # ===== CONFIGURACIÓN PRINCIPAL =====
+    target_light:
+      name: 💡 Luz a controlar
+      description: Selecciona la luz que será controlada por este script
+      selector:
+        entity:
+          domain: light
+
+    modo_visitas_helper:
+      name: 🏠 Ayudante "Modo Visitas"
+      description: Input boolean para activar el modo visitas
+      selector:
+        entity:
+          domain: input_boolean
+      default: input_boolean.modo_visitas
+
+    transition_time:
+      name: ⏱️ Tiempo de transición (segundos)
+      description: Duración del fade-in al encender
+      selector:
+        number:
+          min: 0
+          max: 30
+          unit_of_measurement: "s"
+          mode: slider
+      default: 3
+
+    # ===== MODO PREVIEW/TEST =====
+    enable_preview_mode:
+      name: 🔍 Habilitar Modo Preview
+      description: |-
+        Activa el modo de vista previa para simular diferentes horas.
+        Cuando está activo, usa la hora de prueba en lugar de la hora actual.
+      selector:
+        boolean:
+      default: false
+
+    preview_hour:
+      name: 🕐 Hora de Preview
+      description: |-
+        Simula esta hora para probar el comportamiento.
+        Solo funciona cuando el Modo Preview está activado.
+      selector:
+        number:
+          min: 0
+          max: 23
+          unit_of_measurement: "h"
+          mode: slider
+      default: 12
+
+    show_notifications:
+      name: 📢 Mostrar Notificaciones
+      description: |-
+        Muestra notificaciones con información del estado actual.
+        Útil para debugging y modo preview.
+      selector:
+        boolean:
+      default: false
+
+    # ===== CONFIGURACIÓN MAÑANA (6:00 - 8:59) =====
+    morning_brightness:
+      name: 🌅 Mañana - Brillo
+      description: Brillo para las mañanas (6:00-8:59)
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 75
+
+    morning_temp:
+      name: 🌅 Mañana - Temperatura
+      description: Temperatura en Kelvin (6:00-8:59)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          unit_of_measurement: "K"
+          mode: slider
+      default: 4500
+
+    # ===== CONFIGURACIÓN DÍA (9:00 - 17:59) =====
+    day_brightness:
+      name: ☀️ Día - Brillo
+      description: Brillo durante el día (9:00-17:59)
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 100
+
+    day_temp:
+      name: ☀️ Día - Temperatura
+      description: Temperatura en Kelvin (9:00-17:59)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          unit_of_measurement: "K"
+          mode: slider
+      default: 5500
+
+    # ===== CONFIGURACIÓN TARDE (18:00 - 21:59) =====
+    evening_brightness:
+      name: 🌆 Tarde - Brillo
+      description: Brillo para la tarde (18:00-21:59)
+      selector:
+        number:
+          min: 10
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 60
+
+    evening_temp:
+      name: 🌆 Tarde - Temperatura
+      description: Temperatura en Kelvin (18:00-21:59)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          unit_of_measurement: "K"
+          mode: slider
+      default: 3000
+
+    # ===== CONFIGURACIÓN NOCHE (22:00 - 5:59) =====
+    night_brightness:
+      name: 🌙 Noche - Brillo
+      description: Brillo para la noche (22:00-5:59)
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+      default: 20
+
+    night_temp:
+      name: 🌙 Noche - Temperatura
+      description: Temperatura en Kelvin (22:00-5:59)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          unit_of_measurement: "K"
+          mode: slider
+      default: 2200
+
+# ===== VARIABLES Y LÓGICA =====
+variables:
+  preview_enabled: !input enable_preview_mode
+  preview_h: !input preview_hour
+  notifications: !input show_notifications
+  
+  # Determinar la hora a usar (real o preview)
+  current_hour: "{{ preview_h if preview_enabled else now().hour }}"
+  
+  # Determinar el período basado en la hora
+  time_period: >-
+    {% set h = current_hour | int %}
+    {% if 6 <= h < 9 %}
+      morning
+    {% elif 9 <= h < 18 %}
+      day
+    {% elif 18 <= h < 22 %}
+      evening
+    {% else %}
+      night
+    {% endif %}
+  
+  # Textos para notificaciones
+  period_text: >-
+    {% set h = current_hour | int %}
+    {% if 6 <= h < 9 %}
+      🌅 Mañana (6:00-8:59)
+    {% elif 9 <= h < 18 %}
+      ☀️ Día (9:00-17:59)
+    {% elif 18 <= h < 22 %}
+      🌆 Tarde (18:00-21:59)
+    {% else %}
+      🌙 Noche (22:00-5:59)
+    {% endif %}
+  
+  mode_text: >-
+    {% if preview_enabled %}
+      🔍 MODO PREVIEW - Simulando las {{ current_hour }}:00
+    {% else %}
+      ⏰ Hora actual: {{ now().strftime('%H:%M') }}
+    {% endif %}
+
+sequence:
+  # ===== NOTIFICACIÓN INICIAL (si está habilitada) =====
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ notifications }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "💡 Luz Adaptativa - Estado"
+              message: |-
+                {{ mode_text }}
+                Período detectado: {{ period_text }}
+                Luz objetivo: {{ states.light[state_attr(target_light, 'entity_id').split('.')[1]].name }}
+                {% if states(modo_visitas_helper) == 'on' %}
+                ⚠️ Modo Visitas ACTIVO - Solo encenderá sin ajustes
+                {% endif %}
+              notification_id: adaptive_light_status
+
+  # ===== MODO VISITAS =====
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input modo_visitas_helper
+            state: "on"
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              transition: !input transition_time
+          
+          # Notificación si está habilitada
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ notifications }}"
+                sequence:
+                  - service: persistent_notification.create
+                    data:
+                      title: "🏠 Modo Visitas Ejecutado"
+                      message: "La luz se ha encendido sin ajustes de color/brillo"
+                      notification_id: adaptive_light_result
+
+    # ===== MODO ADAPTATIVO =====
+    default:
+      - choose:
+          # MAÑANA (6:00 - 8:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'morning' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input morning_brightness
+                  kelvin: !input morning_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ notifications }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "🌅 Configuración Mañana Aplicada"
+                          message: |-
+                            Brillo: {{ morning_brightness }}%
+                            Temperatura: {{ morning_temp }}K
+                            {{ mode_text }}
+                          notification_id: adaptive_light_result
+
+          # DÍA (9:00 - 17:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'day' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input day_brightness
+                  kelvin: !input day_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ notifications }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "☀️ Configuración Día Aplicada"
+                          message: |-
+                            Brillo: {{ day_brightness }}%
+                            Temperatura: {{ day_temp }}K
+                            {{ mode_text }}
+                          notification_id: adaptive_light_result
+
+          # TARDE (18:00 - 21:59)
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'evening' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input evening_brightness
+                  kelvin: !input evening_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ notifications }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "🌆 Configuración Tarde Aplicada"
+                          message: |-
+                            Brillo: {{ evening_brightness }}%
+                            Temperatura: {{ evening_temp }}K
+                            {{ mode_text }}
+                          notification_id: adaptive_light_result
+
+        # NOCHE (22:00 - 5:59) - Default
+        default:
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              brightness_pct: !input night_brightness
+              kelvin: !input night_temp
+              transition: !input transition_time
+          
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ notifications }}"
+                sequence:
+                  - service: persistent_notification.create
+                    data:
+                      title: "🌙 Configuración Noche Aplicada"
+                      message: |-
+                        Brillo: {{ night_brightness }}%
+                        Temperatura: {{ night_temp }}K
+                        {{ mode_text }}
+                      notification_id: adaptive_light_result
+
+mode: parallel
+max: 10

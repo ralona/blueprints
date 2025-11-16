@@ -5,24 +5,37 @@ Repositorio de blueprints personalizados para Home Assistant con validación aut
 ## Blueprints disponibles
 
 ### 1. Luz Adaptativa Inteligente Pro (Script)
-**Archivo:** `adaptive_light_script.yml`
+**Archivo:** `adaptive_light_script.yml`  
+**Con Preview:** `adaptive_light_script_with_preview.yml`
 
 Script avanzado que controla luces con brillo y temperatura adaptados automáticamente según la hora del día.
 
 #### Características principales:
 - **4 períodos adaptativos**: Mañana, Día, Tarde y Noche
 - **Modo Visitas**: Enciende luces sin ajustes automáticos
-- **Detección de capacidades**: Se adapta a luces RGB o temperatura de color
-- **Control manual inteligente**: Respeta cambios manuales recientes
+- **Modo Preview**: Simula el comportamiento a cualquier hora del día
+- **Notificaciones**: Muestra información del estado actual (opcional)
 - **Transiciones suaves**: Configurables de 0 a 30 segundos
-- **Registro de eventos**: Para depuración opcional
-- **Ajuste adaptativo**: Transiciones más naturales basadas en el estado actual
+- **Panel de control**: Tarjeta de dashboard incluida para testing
 
 #### Configuración por períodos:
 - **Mañana (6:00-8:59)**: Luz moderada fría-neutra para activación
 - **Día (9:00-17:59)**: Máxima iluminación blanca para productividad
 - **Tarde (18:00-21:59)**: Luz cálida relajante
 - **Noche (22:00-5:59)**: Iluminación mínima muy cálida
+
+#### Modo Preview (Vista Previa)
+
+La versión con preview permite simular cómo se comportará la luz a diferentes horas:
+
+1. **Habilitar Modo Preview**: Activa la simulación
+2. **Seleccionar Hora**: Elige cualquier hora del día (0-23)
+3. **Ver Notificaciones**: Muestra información detallada del estado
+4. **Panel de Dashboard**: Usa `preview_dashboard_card.yaml` para control visual
+
+**Archivos de soporte:**
+- `preview_dashboard_card.yaml` - Tarjeta para el dashboard
+- `preview_helpers.yaml` - Helpers para configuración avanzada
 
 ### 2. Brightness Only in ON Devices
 **Archivo:** `brightness_only_in_on_devices.yml`

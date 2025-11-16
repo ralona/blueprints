@@ -1,0 +1,85 @@
+# Tarjeta de Dashboard para probar el modo Preview
+# Copia este código en tu dashboard de Home Assistant
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      ## 🔍 Panel de Vista Previa - Luz Adaptativa
+      Usa este panel para simular cómo se comportará la luz a diferentes horas del día.
+  
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: "🌅 Mañana"
+        tap_action:
+          action: call-service
+          service: script.tu_script_adaptativo
+          service_data:
+            enable_preview_mode: true
+            preview_hour: 7
+            show_notifications: true
+        icon: mdi:weather-sunset-up
+        
+      - type: button
+        name: "☀️ Día"
+        tap_action:
+          action: call-service
+          service: script.tu_script_adaptativo
+          service_data:
+            enable_preview_mode: true
+            preview_hour: 12
+            show_notifications: true
+        icon: mdi:weather-sunny
+        
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: "🌆 Tarde"
+        tap_action:
+          action: call-service
+          service: script.tu_script_adaptativo
+          service_data:
+            enable_preview_mode: true
+            preview_hour: 19
+            show_notifications: true
+        icon: mdi:weather-sunset-down
+        
+      - type: button
+        name: "🌙 Noche"
+        tap_action:
+          action: call-service
+          service: script.tu_script_adaptativo
+          service_data:
+            enable_preview_mode: true
+            preview_hour: 23
+            show_notifications: true
+        icon: mdi:weather-night
+
+  - type: entities
+    title: "⚙️ Configuración Personalizada"
+    entities:
+      - entity: input_number.preview_hour_slider
+        name: "Hora de Simulación"
+      - entity: input_boolean.preview_notifications
+        name: "Mostrar Notificaciones"
+      - type: button
+        name: "▶️ Ejecutar Preview Personalizado"
+        tap_action:
+          action: call-service
+          service: script.tu_script_adaptativo
+          service_data:
+            enable_preview_mode: true
+            preview_hour: "{{ states('input_number.preview_hour_slider') | int }}"
+            show_notifications: "{{ is_state('input_boolean.preview_notifications', 'on') }}"
+            
+  - type: button
+    name: "🔄 Modo Normal (Hora Actual)"
+    tap_action:
+      action: call-service
+      service: script.tu_script_adaptativo
+      service_data:
+        enable_preview_mode: false
+        show_notifications: false
+    icon: mdi:clock-outline
+    icon_color: green
