@@ -1,0 +1,505 @@
+blueprint:
+  name: Luz Adaptativa con Preview en Configuración
+  description: |-
+    Script de luz adaptativa con preview visual directamente en la configuración.
+    
+    🔍 PREVIEW EN VIVO:
+    Los campos de "Preview Test" te permiten probar la configuración
+    sin esperar a la hora real. Activa el test y selecciona una hora
+    para ver cómo se comportará la luz.
+    
+    📊 Tabla de referencia:
+    • 🌅 Mañana: 6:00 - 8:59
+    • ☀️ Día: 9:00 - 17:59  
+    • 🌆 Tarde: 18:00 - 21:59
+    • 🌙 Noche: 22:00 - 5:59
+    
+  domain: script
+
+  input:
+    # ========================================
+    # 🎯 CONFIGURACIÓN PRINCIPAL
+    # ========================================
+    target_light:
+      name: 💡 Luz a Controlar
+      description: Selecciona la luz que será controlada
+      selector:
+        entity:
+          domain: light
+
+    modo_visitas_helper:
+      name: 🏠 Ayudante Modo Visitas
+      description: |-
+        Input boolean para el modo visitas.
+        En este modo, la luz solo se enciende sin ajustes.
+      selector:
+        entity:
+          domain: input_boolean
+      default: input_boolean.modo_visitas
+
+    transition_time:
+      name: ⏱️ Tiempo de Transición
+      description: |-
+        Segundos de fade-in al encender (0-30).
+        Valores sugeridos:
+        • Rápido: 1-2s
+        • Normal: 3-5s
+        • Suave: 5-10s
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 0.5
+          unit_of_measurement: "s"
+          mode: slider
+      default: 3
+
+    # ========================================
+    # 🔍 SECCIÓN DE PREVIEW/TEST
+    # ========================================
+    preview_section:
+      name: "═══════ 🔍 PREVIEW / TEST ═══════"
+      description: |-
+        ⚡ FUNCIÓN DE PREVIEW EN VIVO
+        
+        Usa estos controles para probar tu configuración:
+        1. Activa "Modo Test"
+        2. Selecciona una hora de prueba
+        3. Ejecuta el script para ver el resultado
+        
+        La luz se configurará como si fuera esa hora.
+      selector:
+        boolean:
+      default: false
+
+    test_mode:
+      name: 🧪 Activar Modo Test
+      description: |-
+        ⚠️ IMPORTANTE: Cuando está activo, usa la hora de test
+        en lugar de la hora actual.
+        
+        Desactiva después de probar para uso normal.
+      selector:
+        boolean:
+      default: false
+
+    test_hour:
+      name: 🕐 Hora de Test
+      description: |-
+        Simula esta hora para preview:
+        
+        🌅 MAÑANA: Prueba con 7
+        ☀️ DÍA: Prueba con 12
+        🌆 TARDE: Prueba con 19
+        🌙 NOCHE: Prueba con 23
+        
+        Actual → {{ now().strftime('%H:%M') }}
+      selector:
+        select:
+          options:
+            - label: "00:00 - 🌙 Noche"
+              value: 0
+            - label: "01:00 - 🌙 Noche"
+              value: 1
+            - label: "02:00 - 🌙 Noche"
+              value: 2
+            - label: "03:00 - 🌙 Noche"
+              value: 3
+            - label: "04:00 - 🌙 Noche"
+              value: 4
+            - label: "05:00 - 🌙 Noche"
+              value: 5
+            - label: "06:00 - 🌅 Mañana"
+              value: 6
+            - label: "07:00 - 🌅 Mañana"
+              value: 7
+            - label: "08:00 - 🌅 Mañana"
+              value: 8
+            - label: "09:00 - ☀️ Día"
+              value: 9
+            - label: "10:00 - ☀️ Día"
+              value: 10
+            - label: "11:00 - ☀️ Día"
+              value: 11
+            - label: "12:00 - ☀️ Día"
+              value: 12
+            - label: "13:00 - ☀️ Día"
+              value: 13
+            - label: "14:00 - ☀️ Día"
+              value: 14
+            - label: "15:00 - ☀️ Día"
+              value: 15
+            - label: "16:00 - ☀️ Día"
+              value: 16
+            - label: "17:00 - ☀️ Día"
+              value: 17
+            - label: "18:00 - 🌆 Tarde"
+              value: 18
+            - label: "19:00 - 🌆 Tarde"
+              value: 19
+            - label: "20:00 - 🌆 Tarde"
+              value: 20
+            - label: "21:00 - 🌆 Tarde"
+              value: 21
+            - label: "22:00 - 🌙 Noche"
+              value: 22
+            - label: "23:00 - 🌙 Noche"
+              value: 23
+      default: 12
+
+    show_test_notification:
+      name: 📢 Mostrar Notificación de Test
+      description: |-
+        Muestra una notificación con los valores aplicados
+        cuando se ejecuta en modo test.
+      selector:
+        boolean:
+      default: true
+
+    # ========================================
+    # 🌅 CONFIGURACIÓN MAÑANA (6:00 - 8:59)
+    # ========================================
+    morning_section:
+      name: "═══════ 🌅 MAÑANA (6:00 - 8:59) ═══════"
+      description: |-
+        Configuración para las primeras horas del día.
+        Recomendado: Luz moderada y fría para activación.
+        
+        💡 TIP: Usa brillo 60-80% y temperatura 4000-5000K
+      selector:
+        boolean:
+      default: false
+
+    morning_brightness:
+      name: Brillo Mañana
+      description: |-
+        Nivel de brillo para las mañanas.
+        📊 Preview: Este valor se aplicará de 6:00 a 8:59
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
+      default: 75
+
+    morning_temp:
+      name: Temperatura Mañana
+      description: |-
+        Temperatura de color (Kelvin).
+        🔵 Más alto = Más frío/azul
+        🟡 Más bajo = Más cálido/amarillo
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+          mode: slider
+      default: 4500
+
+    # ========================================
+    # ☀️ CONFIGURACIÓN DÍA (9:00 - 17:59)
+    # ========================================
+    day_section:
+      name: "═══════ ☀️ DÍA (9:00 - 17:59) ═══════"
+      description: |-
+        Configuración para las horas de máxima actividad.
+        Recomendado: Máximo brillo y luz blanca/fría.
+        
+        💡 TIP: Usa brillo 90-100% y temperatura 5000-6500K
+      selector:
+        boolean:
+      default: false
+
+    day_brightness:
+      name: Brillo Día
+      description: |-
+        Nivel de brillo durante el día.
+        📊 Preview: Este valor se aplicará de 9:00 a 17:59
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
+      default: 100
+
+    day_temp:
+      name: Temperatura Día
+      description: |-
+        Temperatura de color para productividad.
+        🔵 Recomendado: 5000-6500K (luz de día)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+          mode: slider
+      default: 5500
+
+    # ========================================
+    # 🌆 CONFIGURACIÓN TARDE (18:00 - 21:59)
+    # ========================================
+    evening_section:
+      name: "═══════ 🌆 TARDE (18:00 - 21:59) ═══════"
+      description: |-
+        Configuración para el atardecer y primeras horas de la noche.
+        Recomendado: Luz cálida y relajante.
+        
+        💡 TIP: Usa brillo 50-70% y temperatura 2700-3500K
+      selector:
+        boolean:
+      default: false
+
+    evening_brightness:
+      name: Brillo Tarde
+      description: |-
+        Nivel de brillo para la tarde.
+        📊 Preview: Este valor se aplicará de 18:00 a 21:59
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
+      default: 60
+
+    evening_temp:
+      name: Temperatura Tarde
+      description: |-
+        Temperatura cálida para relajación.
+        🟡 Recomendado: 2700-3500K (cálido)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+          mode: slider
+      default: 3000
+
+    # ========================================
+    # 🌙 CONFIGURACIÓN NOCHE (22:00 - 5:59)
+    # ========================================
+    night_section:
+      name: "═══════ 🌙 NOCHE (22:00 - 5:59) ═══════"
+      description: |-
+        Configuración para las horas de descanso.
+        Recomendado: Mínimo brillo y muy cálido.
+        
+        💡 TIP: Usa brillo 10-30% y temperatura 2000-2700K
+        🔴 Evita luz azul para no afectar el sueño
+      selector:
+        boolean:
+      default: false
+
+    night_brightness:
+      name: Brillo Noche
+      description: |-
+        Nivel mínimo para no perturbar el sueño.
+        📊 Preview: Este valor se aplicará de 22:00 a 5:59
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
+      default: 20
+
+    night_temp:
+      name: Temperatura Noche
+      description: |-
+        Temperatura muy cálida para preparar el descanso.
+        🔴 Recomendado: 2000-2700K (muy cálido)
+      selector:
+        number:
+          min: 2000
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+          mode: slider
+      default: 2200
+
+# ========================================
+# VARIABLES Y LÓGICA
+# ========================================
+variables:
+  is_test: !input test_mode
+  test_h: !input test_hour
+  show_notif: !input show_test_notification
+  
+  # Hora a usar (test o real)
+  current_hour: "{{ test_h if is_test else now().hour }}"
+  
+  # Determinar período
+  time_period: >-
+    {% set h = current_hour | int %}
+    {% if 6 <= h < 9 %}
+      morning
+    {% elif 9 <= h < 18 %}
+      day
+    {% elif 18 <= h < 22 %}
+      evening
+    {% else %}
+      night
+    {% endif %}
+  
+  # Texto descriptivo
+  period_name: >-
+    {% set h = current_hour | int %}
+    {% if 6 <= h < 9 %}
+      🌅 Mañana
+    {% elif 9 <= h < 18 %}
+      ☀️ Día
+    {% elif 18 <= h < 22 %}
+      🌆 Tarde
+    {% else %}
+      🌙 Noche
+    {% endif %}
+
+sequence:
+  # Notificación si está en modo test
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_test and show_notif }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "🧪 Modo Test - Luz Adaptativa"
+              message: |-
+                Simulando hora: {{ current_hour }}:00
+                Período detectado: {{ period_name }}
+                
+                Se aplicará la configuración de {{ period_name }}
+              notification_id: adaptive_light_test
+
+  # Modo Visitas
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: !input modo_visitas_helper
+            state: "on"
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              transition: !input transition_time
+
+    # Modo Adaptativo
+    default:
+      - choose:
+          # MAÑANA
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'morning' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input morning_brightness
+                  kelvin: !input morning_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_test and show_notif }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "✅ Test Aplicado - Mañana"
+                          message: |-
+                            Brillo: {{ morning_brightness }}%
+                            Temperatura: {{ morning_temp }}K
+                            Hora simulada: {{ current_hour }}:00
+                          notification_id: adaptive_light_result
+
+          # DÍA
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'day' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input day_brightness
+                  kelvin: !input day_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_test and show_notif }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "✅ Test Aplicado - Día"
+                          message: |-
+                            Brillo: {{ day_brightness }}%
+                            Temperatura: {{ day_temp }}K
+                            Hora simulada: {{ current_hour }}:00
+                          notification_id: adaptive_light_result
+
+          # TARDE
+          - conditions:
+              - condition: template
+                value_template: "{{ time_period == 'evening' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: !input target_light
+                data:
+                  brightness_pct: !input evening_brightness
+                  kelvin: !input evening_temp
+                  transition: !input transition_time
+              
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_test and show_notif }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "✅ Test Aplicado - Tarde"
+                          message: |-
+                            Brillo: {{ evening_brightness }}%
+                            Temperatura: {{ evening_temp }}K
+                            Hora simulada: {{ current_hour }}:00
+                          notification_id: adaptive_light_result
+
+        # NOCHE (default)
+        default:
+          - service: light.turn_on
+            target:
+              entity_id: !input target_light
+            data:
+              brightness_pct: !input night_brightness
+              kelvin: !input night_temp
+              transition: !input transition_time
+          
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ is_test and show_notif }}"
+                sequence:
+                  - service: persistent_notification.create
+                    data:
+                      title: "✅ Test Aplicado - Noche"
+                      message: |-
+                        Brillo: {{ night_brightness }}%
+                        Temperatura: {{ night_temp }}K
+                        Hora simulada: {{ current_hour }}:00
+                      notification_id: adaptive_light_result
+
+mode: parallel
+max: 10
