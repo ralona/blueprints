@@ -201,6 +201,18 @@ variables:
   log_enabled: !input enable_logging
   adaptive: !input adaptive_brightness
   manual_control: !input respect_manual_control
+  morning_brightness: !input morning_brightness
+  morning_temp: !input morning_temp
+  morning_rgb: !input morning_rgb
+  day_brightness: !input day_brightness
+  day_temp: !input day_temp
+  day_rgb: !input day_rgb
+  evening_brightness: !input evening_brightness
+  evening_temp: !input evening_temp
+  evening_rgb: !input evening_rgb
+  night_brightness: !input night_brightness
+  night_temp: !input night_temp
+  night_rgb: !input night_rgb
   
   # Determinar período del día
   current_hour: "{{ now().hour }}"
@@ -287,26 +299,16 @@ sequence:
               - service: light.turn_on
                 target:
                   entity_id: !input target_light
-                data:
-                  brightness_pct: >-
-                    {% if adaptive and states(light) == 'on' %}
-                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, morning_brightness | int] | average | round }}
-                    {% else %}
-                      {{ morning_brightness }}
-                    {% endif %}
-                  color_temp_kelvin: >-
-                    {% if supports_color_temp %}
-                      {{ morning_temp }}
-                    {% else %}
-                      
-                    {% endif %}
-                  rgb_color: >-
-                    {% if not supports_color_temp and supports_rgb %}
-                      {{ morning_rgb }}
-                    {% else %}
-                      
-                    {% endif %}
-                  transition: !input transition_time
+                data: >-
+                  {% set base_data = {'transition': transition} %}
+                  {% set brightness_val = morning_brightness if not (adaptive and states(light) == 'on') else ([state_attr(light, 'brightness') | int(255) * 100 / 255, morning_brightness | int] | average | round) %}
+                  {% set base_data = dict(base_data, brightness_pct=brightness_val) %}
+                  {% if supports_color_temp %}
+                    {% set base_data = dict(base_data, color_temp_kelvin=morning_temp) %}
+                  {% elif supports_rgb %}
+                    {% set base_data = dict(base_data, rgb_color=morning_rgb) %}
+                  {% endif %}
+                  {{ base_data }}
 
           # DÍA (9:00 - 17:59)
           - conditions:
@@ -316,26 +318,16 @@ sequence:
               - service: light.turn_on
                 target:
                   entity_id: !input target_light
-                data:
-                  brightness_pct: >-
-                    {% if adaptive and states(light) == 'on' %}
-                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, day_brightness | int] | average | round }}
-                    {% else %}
-                      {{ day_brightness }}
-                    {% endif %}
-                  color_temp_kelvin: >-
-                    {% if supports_color_temp %}
-                      {{ day_temp }}
-                    {% else %}
-                      
-                    {% endif %}
-                  rgb_color: >-
-                    {% if not supports_color_temp and supports_rgb %}
-                      {{ day_rgb }}
-                    {% else %}
-                      
-                    {% endif %}
-                  transition: !input transition_time
+                data: >-
+                  {% set base_data = {'transition': transition} %}
+                  {% set brightness_val = day_brightness if not (adaptive and states(light) == 'on') else ([state_attr(light, 'brightness') | int(255) * 100 / 255, day_brightness | int] | average | round) %}
+                  {% set base_data = dict(base_data, brightness_pct=brightness_val) %}
+                  {% if supports_color_temp %}
+                    {% set base_data = dict(base_data, color_temp_kelvin=day_temp) %}
+                  {% elif supports_rgb %}
+                    {% set base_data = dict(base_data, rgb_color=day_rgb) %}
+                  {% endif %}
+                  {{ base_data }}
 
           # TARDE (18:00 - 21:59)
           - conditions:
@@ -345,52 +337,32 @@ sequence:
               - service: light.turn_on
                 target:
                   entity_id: !input target_light
-                data:
-                  brightness_pct: >-
-                    {% if adaptive and states(light) == 'on' %}
-                      {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, evening_brightness | int] | average | round }}
-                    {% else %}
-                      {{ evening_brightness }}
-                    {% endif %}
-                  color_temp_kelvin: >-
-                    {% if supports_color_temp %}
-                      {{ evening_temp }}
-                    {% else %}
-                      
-                    {% endif %}
-                  rgb_color: >-
-                    {% if not supports_color_temp and supports_rgb %}
-                      {{ evening_rgb }}
-                    {% else %}
-                      
-                    {% endif %}
-                  transition: !input transition_time
+                data: >-
+                  {% set base_data = {'transition': transition} %}
+                  {% set brightness_val = evening_brightness if not (adaptive and states(light) == 'on') else ([state_attr(light, 'brightness') | int(255) * 100 / 255, evening_brightness | int] | average | round) %}
+                  {% set base_data = dict(base_data, brightness_pct=brightness_val) %}
+                  {% if supports_color_temp %}
+                    {% set base_data = dict(base_data, color_temp_kelvin=evening_temp) %}
+                  {% elif supports_rgb %}
+                    {% set base_data = dict(base_data, rgb_color=evening_rgb) %}
+                  {% endif %}
+                  {{ base_data }}
 
           # NOCHE (22:00 - 5:59) - Por defecto
           default:
             - service: light.turn_on
               target:
                 entity_id: !input target_light
-              data:
-                brightness_pct: >-
-                  {% if adaptive and states(light) == 'on' %}
-                    {{ [state_attr(light, 'brightness') | int(255) * 100 / 255, night_brightness | int] | average | round }}
-                  {% else %}
-                    {{ night_brightness }}
-                  {% endif %}
-                color_temp_kelvin: >-
-                  {% if supports_color_temp %}
-                    {{ night_temp }}
-                  {% else %}
-                    
-                  {% endif %}
-                rgb_color: >-
-                  {% if not supports_color_temp and supports_rgb %}
-                    {{ night_rgb }}
-                  {% else %}
-                    
-                  {% endif %}
-                transition: !input transition_time
+              data: >-
+                {% set base_data = {'transition': transition} %}
+                {% set brightness_val = night_brightness if not (adaptive and states(light) == 'on') else ([state_attr(light, 'brightness') | int(255) * 100 / 255, night_brightness | int] | average | round) %}
+                {% set base_data = dict(base_data, brightness_pct=brightness_val) %}
+                {% if supports_color_temp %}
+                  {% set base_data = dict(base_data, color_temp_kelvin=night_temp) %}
+                {% elif supports_rgb %}
+                  {% set base_data = dict(base_data, rgb_color=night_rgb) %}
+                {% endif %}
+                {{ base_data }}
 
   # --- Registro final ---
   - if:
