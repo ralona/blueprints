@@ -1,0 +1,11 @@
+# Pre-commit configuration usando Docker (no requiere Python local)
+repos:
+  - repo: local
+    hooks:
+      - id: validate-yaml-blueprints-docker
+        name: Validate YAML Blueprints (Docker)
+        entry: ./validate-docker.sh
+        language: system
+        files: \.(yml|yaml)$
+        pass_filenames: true
+        stages: [pre-commit]
