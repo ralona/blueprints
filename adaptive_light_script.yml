@@ -21,12 +21,12 @@ blueprint:
           domain: light
 
     modo_visitas_helper:
-      name: Ayudante "Modo Visitas"
-      description: Input boolean para activar el modo visitas
+      name: Ayudante "Modo Visitas" (Opcional)
+      description: Input boolean OPCIONAL para activar el modo visitas. Deja vacío si no lo necesitas.
       selector:
         entity:
           domain: input_boolean
-      default: input_boolean.modo_visitas
+      default: []
 
     transition_time:
       name: Tiempo de transición (segundos)
@@ -131,13 +131,22 @@ blueprint:
           mode: slider
       default: 2200
 
+variables:
+  visitas_helper: !input modo_visitas_helper
+  # Verificar si el modo visitas está configurado y activo
+  visitas_active: >-
+    {% if visitas_helper is defined and visitas_helper != [] and visitas_helper != '' %}
+      {{ is_state(visitas_helper, 'on') }}
+    {% else %}
+      false
+    {% endif %}
+
 sequence:
   - choose:
       # MODO VISITAS ACTIVADO
       - conditions:
-          - condition: state
-            entity_id: !input modo_visitas_helper
-            state: "on"
+          - condition: template
+            value_template: "{{ visitas_active }}"
         sequence:
           - service: light.turn_on
             target:

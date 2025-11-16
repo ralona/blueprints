@@ -23,12 +23,12 @@ blueprint:
           domain: light
 
     modo_visitas_helper:
-      name: 🏠 Ayudante "Modo Visitas"
-      description: Input boolean para activar el modo visitas
+      name: 🏠 Ayudante "Modo Visitas" (Opcional)
+      description: Input boolean OPCIONAL para activar el modo visitas. Deja vacío si no lo necesitas.
       selector:
         entity:
           domain: input_boolean
-      default: input_boolean.modo_visitas
+      default: []
 
     transition_time:
       name: ⏱️ Tiempo de transición (segundos)
@@ -170,6 +170,15 @@ variables:
   preview_enabled: !input enable_preview_mode
   preview_h: !input preview_hour
   notifications: !input show_notifications
+  visitas_helper: !input modo_visitas_helper
+  
+  # Verificar si el modo visitas está configurado y activo
+  visitas_active: >-
+    {% if visitas_helper is defined and visitas_helper != [] and visitas_helper != '' %}
+      {{ is_state(visitas_helper, 'on') }}
+    {% else %}
+      false
+    {% endif %}
   
   # Determinar la hora a usar (real o preview)
   current_hour: "{{ preview_h if preview_enabled else now().hour }}"
@@ -221,7 +230,7 @@ sequence:
                 {{ mode_text }}
                 Período detectado: {{ period_text }}
                 Luz objetivo: {{ states.light[state_attr(target_light, 'entity_id').split('.')[1]].name }}
-                {% if states(modo_visitas_helper) == 'on' %}
+                {% if visitas_active %}
                 ⚠️ Modo Visitas ACTIVO - Solo encenderá sin ajustes
                 {% endif %}
               notification_id: adaptive_light_status
@@ -229,9 +238,8 @@ sequence:
   # ===== MODO VISITAS =====
   - choose:
       - conditions:
-          - condition: state
-            entity_id: !input modo_visitas_helper
-            state: "on"
+          - condition: template
+            value_template: "{{ visitas_active }}"
         sequence:
           - service: light.turn_on
             target:
