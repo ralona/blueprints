@@ -1,0 +1,87 @@
+# Dashboard Card para Testing de Luz Adaptativa
+# Añade esta tarjeta a tu dashboard para probar cada período
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: |
+      # 🧪 Panel de Test - Luz Adaptativa
+      
+      Usa estos botones para probar cada período.
+      Asegúrate de haber guardado tu script primero.
+
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Actual
+        icon: mdi:clock-outline
+        icon_color: green
+        tap_action:
+          action: call-service
+          service: script.TU_SCRIPT_AQUI  # <-- Cambia esto
+          service_data: {}
+        hold_action:
+          action: more-info
+          
+      - type: button  
+        name: Mañana
+        icon: mdi:weather-sunset-up
+        icon_color: orange
+        tap_action:
+          action: call-service
+          service: script.TU_SCRIPT_AQUI  # <-- Cambia esto
+          service_data:
+            force_hour: 7
+
+  - type: horizontal-stack
+    cards:            
+      - type: button
+        name: Día
+        icon: mdi:weather-sunny
+        icon_color: yellow
+        tap_action:
+          action: call-service
+          service: script.TU_SCRIPT_AQUI  # <-- Cambia esto
+          service_data:
+            force_hour: 12
+            
+      - type: button
+        name: Tarde
+        icon: mdi:weather-sunset-down
+        icon_color: deep-orange
+        tap_action:
+          action: call-service
+          service: script.TU_SCRIPT_AQUI  # <-- Cambia esto
+          service_data:
+            force_hour: 19
+
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Noche
+        icon: mdi:weather-night
+        icon_color: indigo
+        tap_action:
+          action: call-service
+          service: script.TU_SCRIPT_AQUI  # <-- Cambia esto
+          service_data:
+            force_hour: 23
+            
+      - type: button
+        name: Apagar
+        icon: mdi:lightbulb-off
+        icon_color: red
+        tap_action:
+          action: call-service
+          service: light.turn_off
+          target:
+            entity_id: light.TU_LUZ_AQUI  # <-- Cambia esto
+
+  - type: markdown
+    content: |
+      ---
+      **💡 Cómo usar:**
+      1. Reemplaza `script.TU_SCRIPT_AQUI` con tu script
+      2. Reemplaza `light.TU_LUZ_AQUI` con tu luz
+      3. Cada botón simula una hora diferente
+      4. "Actual" usa la hora real del sistema
